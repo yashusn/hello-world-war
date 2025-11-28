@@ -1,7 +1,8 @@
 pipeline {
-    agent { label 'slave2' }
-
-    stages {
+   // agent { label 'Java' }
+agent none
+    stages ('hello-world-war') {
+        parallel {
         stage('Checkout') {
             steps {
                 sh "rm -rf hello-world-war"
@@ -19,4 +20,6 @@ pipeline {
                            }
         }
     }
+}
+}
 }
