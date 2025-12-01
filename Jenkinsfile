@@ -1,6 +1,11 @@
 pipeline {
    // agent { label 'Java' }
 agent none
+	parameters {
+string(name: 'mcmd1', defaultValue: 'clean', description: 'maven clean command')
+booleanParam(name: 'SAMPLE_BOOLEAN', defaultValue: true, description: 'A boolean parameter')
+choice(name: 'mcmd2', choices: ['Package', 'compile', 'install','validate'], description: 'Choose one option')
+}
 stages { 
     stage ('hello-world-war') {
         parallel {
