@@ -19,7 +19,7 @@ stages {
         stage('Build') {
 		agent { label 'Java' }
             steps {
-                sh "mvn clean package"
+                sh "mvn $mcmd1 $mcmd2"
               }
         }
         stage('Deploy') {
