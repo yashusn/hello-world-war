@@ -15,7 +15,7 @@ stages {
 				withCredentials([
 					usernamePassword(credentialsId: 'e919faa3-a431-4023-91af-d4c7df158e19', usernameVariable: 'MY_USERNAME', passwordVariable: 'MY_PASSWORD'),
 					sshUserPrivateKey(credentialsId: 'b6bfc174-b510-405e-810f-79b569cd0a83', keyFileVariable: 'KEY_FILE',usernameVariable: 'SSH_USER') ]) 
-				{ sh "rm -rf hello-world-war"
+				sh "rm -rf hello-world-war"
                sh "git clone https://github.com/yashusn/hello-world-war"
             }
         }
