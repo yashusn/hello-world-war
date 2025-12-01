@@ -24,6 +24,7 @@ stages {
                sh "git clone https://github.com/yashusn/hello-world-war"
             }
         }
+		}
         stage('Build') {
 		agent { label 'Java' }
             steps {
@@ -37,7 +38,6 @@ stages {
                            }
         }
     }
-}
 }
 }
 }
