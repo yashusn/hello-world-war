@@ -2,7 +2,7 @@ pipeline {
     agent { label 'docker' }
 
     environment {
-        IMAGE_NAME = "yourdockerhubusername/tomcat-app"
+        IMAGE_NAME = "yashusn/tomcat-app"
         IMAGE_TAG  = "${BUILD_NUMBER}"
         CONTAINER_NAME = "tomcat-app"
     }
