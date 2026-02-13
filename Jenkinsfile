@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'docker-slave' }
+    agent { label 'docker' }
 
     environment {
         IMAGE_NAME = "yourdockerhubusername/tomcat-app"
@@ -11,7 +11,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main',
+                git branch: 'master',
                     url: 'https://github.com/yashusn/hello-world-war.git'
             }
         }
