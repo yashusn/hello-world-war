@@ -15,15 +15,10 @@ pipeline {
 
     stages {
 
-		stage('Clean Workspace') {
-    steps {
-        cleanWs()
-    }
-}
-
-        stage('Checkout') {
-            steps {
-                git clone 'https://github.com/yashusn/hello-world-war.git'
+	        stage('Checkout') {
+           steps {
+                git branch: 'master',
+                    url: 'https://github.com/yashusn/hello-world-war.git'
             }
         }
 
