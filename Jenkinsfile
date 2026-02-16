@@ -10,6 +10,7 @@ pipeline {
         IMAGE_NAME = "yashusn/tomcat-app"
         IMAGE_TAG  = "${BUILD_NUMBER}"
         CONTAINER_NAME = "tomcat-app"
+		HOME = "${WORKSPACE}"
     }
 
     stages {
