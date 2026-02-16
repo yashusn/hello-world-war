@@ -23,8 +23,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'master',
-                    url: 'https://github.com/yashusn/hello-world-war.git'
+                git clone 'https://github.com/yashusn/hello-world-war.git'
             }
         }
 
