@@ -11,7 +11,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/yashusn/hello-world-war.git'
+                git credentialsId: 'git_creds', url: 'https://github.com/yashusn/hello-world-war.git'
             }
         }
 
@@ -25,25 +25,23 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                withDockerRegistry(credentialsId: 'dockerhub-creds', url: 'https://index.docker.io/v1/') { {
-                    sh """
-                    docker push $DOCKER_IMAGE:${BUILD_NUMBER}
-                    """
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
+                        sh "docker push $DOCKER_IMAGE:${BUILD_NUMBER}"
+                    }
                 }
             }
         }
 
         stage('Package Helm Chart') {
             steps {
-                sh """
-                helm package helm-chart
-                """
+                sh "helm package helm-chart"
             }
         }
 
         stage('Upload Helm Chart to JFrog') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'JFROG-CREDS', usernameVariable: 'JF_USER', passwordVariable: 'JF_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'JFROG_CREDS', usernameVariable: 'JF_USER', passwordVariable: 'JF_PASS')]) {
                     sh """
                     curl -u $JF_USER:$JF_PASS \
                     -T hello-world-war-0.1.0.tgz \
@@ -55,7 +53,7 @@ pipeline {
 
         stage('Add Helm Repo') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'JFROG-CREDS', usernameVariable: 'JF_USER', passwordVariable: 'JF_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'JFROG_CREDS', usernameVariable: 'JF_USER', passwordVariable: 'JF_PASS')]) {
                     sh """
                     helm repo add $HELM_REPO_NAME $HELM_REPO_URL \
                     --username $JF_USER \
