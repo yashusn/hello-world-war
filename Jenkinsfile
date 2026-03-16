@@ -2,13 +2,13 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = "your-dockerhub-username/hello-world-war"
+        DOCKER_IMAGE = "yashusn/hello-world-war"
         HELM_CHART = "hello-world-war-helm"
         ARTIFACTORY_URL = "https://trials7020p.jfrog.io/artifactory/api/helm/hello-wold-war-helm"
         BUILD_NUMBER_TAG = "${BUILD_NUMBER}"
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
-        ARTIFACTORY_CREDENTIALS = credentials('jfrog-credentials-id')
-        K8S_NAMESPACE = 'default'
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
+        ARTIFACTORY_CREDENTIALS = credentials('JFROG_CREDS')
+        K8S_NAMESPACE = 'my-jenkins'
     }
     
     stages {
