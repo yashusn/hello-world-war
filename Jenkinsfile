@@ -50,3 +50,4 @@ spec:
   stages {
     stage('Checkout') {
       steps { git credentialsId: 'git_creds', url: 'https://github.com/yashusn/hello-world-war.git'
+            }
