@@ -19,14 +19,11 @@ pipeline {
                 
                 // [4] Build Docker image using multi-stage Dockerfile
                 script {
-                    def image = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER_TAG}")
-                }
+            def image = docker.build("yashusn/hello-world-war:${BUILD_NUMBER}")
+        }
                 
                 // [5] Package Helm chart
-                sh """
-                    helm package ${HELM_CHART}/
-                    mv ${HELM_CHART}-${BUILD_NUMBER_TAG || '0.1.0'}.tgz hello-world-war-${BUILD_NUMBER_TAG}.tgz
-                """
+                sh 'helm package hello-world-war-helm/'
             }
         }
         
