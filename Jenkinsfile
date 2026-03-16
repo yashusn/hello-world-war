@@ -14,6 +14,14 @@ pipeline {
                 git credentialsId: 'git_creds', url: 'https://github.com/yashusn/hello-world-war.git'
             }
         }
+        stage('Install Docker') {
+            steps {
+                sh '''
+                chmod +x scripts/install-docker.sh
+                ./scripts/install-docker.sh
+                '''
+            }
+        }
 
         stage('Build Docker Image') {
             steps {
