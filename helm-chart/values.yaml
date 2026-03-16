@@ -1,1 +1,10 @@
+image:
+  repository: yashusn/hello-world-war
+  tag: latest
+  pullPolicy: Always
 
+replicaCount: 2
+
+service:
+  type: NodePort
+  port: 8080
