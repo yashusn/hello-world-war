@@ -1,103 +1,81 @@
 pipeline {
-  agent {
-    kubernetes {
-      yaml '''
-apiVersion: v1
-kind: Pod
-spec:
-  containers:
-  - name: docker
-    image: docker:24.0
-    command: ["sleep", "99d"]
-    tty: true
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
-    resources:
-      requests:
-        cpu: "50m"
-        memory: "128Mi"
-
-  - name: helm
-    image: alpine/helm:3.14.2
-    command: ["sleep", "99d"]
-    tty: true
-    resources:
-      requests:
-        cpu: "25m"
-        memory: "64Mi"
-
-  volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
-'''
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = "your-dockerhub-username/hello-world-war"
+        HELM_CHART = "hello-world-war-helm"
+        ARTIFACTORY_URL = "https://trials7020p.jfrog.io/artifactory/api/helm/hello-wold-war-helm"
+        BUILD_NUMBER_TAG = "${BUILD_NUMBER}"
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
+        ARTIFACTORY_CREDENTIALS = credentials('jfrog-credentials-id')
+        K8S_NAMESPACE = 'default'
     }
-  }
-
-  environment {
-    DOCKER_IMAGE = "yashusn/hello-world-war"
-    HELM_REPO_URL = "https://trials7020p.jfrog.io/artifactory/api/helm/hello-wold-war-helm"
-    HELM_REPO_NAME = "hello-war"
-  }
-
-  stages {
-    stage('Checkout') {
-      steps { 
-        git credentialsId: 'git_creds', 
-            url: 'https://github.com/yashusn/hello-world-war.git'
-      }
-    }
-
-    stage('Build Docker') {
-      steps {
-        container('docker') {
-          sh '''
-            docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
-            docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
-          '''
+    
+    stages {
+        stage('Build') {
+            steps {
+                // [3] Checkout source code
+                checkout scm
+                
+                // [4] Build Docker image using multi-stage Dockerfile
+                script {
+                    def image = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER_TAG}")
+                }
+                
+                // [5] Package Helm chart
+                sh """
+                    helm package ${HELM_CHART}/
+                    mv ${HELM_CHART}-${BUILD_NUMBER_TAG || '0.1.0'}.tgz hello-world-war-${BUILD_NUMBER_TAG}.tgz
+                """
+            }
         }
-      }
-    }
-
-    stage('Push Docker') {
-      steps {
-        container('docker') {
-          withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
-                          usernameVariable: 'DOCKER_USER', 
-                          passwordVariable: 'DOCKER_PASS')]) {
-            sh '''
-              echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-              docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
-              docker push ${DOCKER_IMAGE}:latest
-            '''
-          }
+        
+        stage('Publish') {
+            steps {
+                // [6] Push Docker image to registry
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials-id') {
+                        def image = docker.image("${DOCKER_IMAGE}:${BUILD_NUMBER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+                
+                // [7] Push Helm chart to JFrog Artifactory
+                sh """
+                    curl -u ${ARTIFACTORY_CREDENTIALS} \\
+                         -T hello-world-war-${BUILD_NUMBER_TAG}.tgz \\
+                         "${ARTIFACTORY_URL}/hello-world-war-${BUILD_NUMBER_TAG}.tgz"
+                """
+            }
         }
-      }
-    }
-
-    stage('Helm Package & Deploy') {
-      steps {
-        container('helm') {
-          withCredentials([usernamePassword(credentialsId: 'JFROG_CREDS', 
-                          usernameVariable: 'JF_USER', 
-                          passwordVariable: 'JF_PASS')]) {
-            sh '''
-              helm package helm-chart/
-              curl -u $JF_USER:$JF_PASS -T hello-world-war-0.1.0.tgz \\
-                "https://trials7020p.jfrog.io/artifactory/hello-wold-war-helm/"
-              helm repo add $HELM_REPO_NAME $HELM_REPO_URL \\
-                --username $JF_USER --password $JF_PASS
-              helm repo update
-              helm upgrade --install hello-world \\
-                $HELM_REPO_NAME/hello-world-war \\
-                --set image.repository=$DOCKER_IMAGE \\
-                --set image.tag=${BUILD_NUMBER} \\
-                --namespace default
-            '''
-          }
+        
+        stage('Deploy') {
+            steps {
+                // [8] Pull Helm chart from JFrog Artifactory
+                sh """
+                    helm repo add hello-world-war ${ARTIFACTORY_URL}
+                    helm repo update
+                """
+                
+                // [9][10] Install/Upgrade with build number as image tag
+                sh """
+                    helm upgrade --install hello-world-war \\
+                        hello-world-war/hello-world-war \\
+                        --namespace ${K8S_NAMESPACE} \\
+                        --set image.repository=${DOCKER_IMAGE} \\
+                        --set image.tag=${BUILD_NUMBER_TAG} \\
+                        --create-namespace
+                """
+            }
         }
-      }
     }
-  }
+    
+    post {
+        always {
+            sh 'helm repo remove hello-world-war || true'
+            sh 'docker system prune -f'
+            cleanWs()
+        }
+    }
 }
