@@ -6,7 +6,7 @@ WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 
-RUN mvn clean package -DskipTests
+RUN mvn clean package
 
 # ---------- Stage 2 : Runtime ----------
 FROM tomcat:10-jdk17
