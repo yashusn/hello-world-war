@@ -1,6 +1,7 @@
 pipeline {
   agent {
     kubernetes {
+      namespace: 'my-jenkins'
       yaml '''
 apiVersion: v1
 kind: Pod
@@ -8,19 +9,15 @@ spec:
   containers:
   - name: docker
     image: docker:24.0
-    command: ["sleep"]
-    args: ["99d"]
+    command: ["sleep", "99d"]
     tty: true
     volumeMounts:
     - name: docker-sock
       mountPath: /var/run/docker.sock
     resources:
       requests:
-        cpu: "100m"
-        memory: "256Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
+        cpu: "50m"
+        memory: "128Mi"
         
   - name: helm
     image: alpine/helm:3.14.2
@@ -28,11 +25,8 @@ spec:
     tty: true
     resources:
       requests:
-        cpu: "50m"
-        memory: "128Mi"
-      limits:
-        cpu: "100m"
-        memory: "256Mi"
+        cpu: "25m"
+        memory: "64Mi"
 
   volumes:
   - name: docker-sock
@@ -49,15 +43,13 @@ spec:
   }
 
   stages {
-    
     stage('Checkout') {
-      steps {
-        git credentialsId: 'git_creds', 
-            url: 'https://github.com/yashusn/hello-world-war.git'
+      steps { 
+        git credentialsId: 'git_creds', url: 'https://github.com/yashusn/hello-world-war.git'
       }
     }
 
-    stage('Build Docker Image') {
+    stage('Build Docker') {
       steps {
         container('docker') {
           sh '''
@@ -68,16 +60,12 @@ spec:
       }
     }
 
-    stage('Push Docker Image') {
+    stage('Push Docker') {
       steps {
         container('docker') {
-          withCredentials([
-            usernamePassword(
-              credentialsId: 'dockerhub-creds', 
-              usernameVariable: 'DOCKER_USER', 
-              passwordVariable: 'DOCKER_PASS'
-            )
-          ]) {
+          withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                          usernameVariable: 'DOCKER_USER', 
+                          passwordVariable: 'DOCKER_PASS')]) {
             sh '''
               echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
               docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
@@ -88,49 +76,16 @@ spec:
       }
     }
 
-    stage('Package Helm Chart') {
+    stage('Helm Package & Deploy') {
       steps {
         container('helm') {
-          sh '''
-            helm package helm-chart/
-            ls -la hello-world-war-*.tgz
-          '''
-        }
-      }
-    }
-
-    stage('Upload Helm to JFrog') {
-      steps {
-        container('helm') {
-          withCredentials([
-            usernamePassword(
-              credentialsId: 'JFROG_CREDS', 
-              usernameVariable: 'JF_USER', 
-              passwordVariable: 'JF_PASS'
-            )
-          ]) {
+          withCredentials([usernamePassword(credentialsId: 'JFROG_CREDS', 
+                          usernameVariable: 'JF_USER', 
+                          passwordVariable: 'JF_PASS')]) {
             sh '''
-              curl -u $JF_USER:$JF_PASS \\
-                -T hello-world-war-0.1.0.tgz \\
+              helm package helm-chart/
+              curl -u $JF_USER:$JF_PASS -T hello-world-war-0.1.0.tgz \\
                 "https://trials7020p.jfrog.io/artifactory/hello-wold-war-helm/"
-              echo "Helm chart uploaded successfully"
-            '''
-          }
-        }
-      }
-    }
-
-    stage('Add Helm Repo & Deploy') {
-      steps {
-        container('helm') {
-          withCredentials([
-            usernamePassword(
-              credentialsId: 'JFROG_CREDS', 
-              usernameVariable: 'JF_USER', 
-              passwordVariable: 'JF_PASS'
-            )
-          ]) {
-            sh '''
               helm repo add $HELM_REPO_NAME $HELM_REPO_URL \\
                 --username $JF_USER --password $JF_PASS
               helm repo update
@@ -139,27 +94,10 @@ spec:
                 --set image.repository=$DOCKER_IMAGE \\
                 --set image.tag=${BUILD_NUMBER} \\
                 --namespace default
-              echo "Deployment completed: hello-world-${BUILD_NUMBER}"
             '''
           }
         }
       }
-    }
-  }
-
-  post {
-    always {
-      container('helm') {
-        sh '''
-          helm list -n default
-        '''
-      }
-    }
-    success {
-      echo "✅ Pipeline completed successfully!"
-    }
-    failure {
-      echo "❌ Pipeline failed!"
     }
   }
 }
