@@ -6,7 +6,12 @@ pipeline {
         ARTIFACTORY_URL = 'https://trials7020p.jfrog.io/artifactory/api/helm/hello-wold-war-helm'
         BUILD_NUMBER_TAG = "${BUILD_NUMBER}"
     }
-    
+    agent {
+		docker {
+            image 'docker:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker'
+        }
+	}
     stages {
         stage('Build') {
             agent {
