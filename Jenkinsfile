@@ -14,7 +14,7 @@ spec:
       - name: docker-config
         mountPath: /kaniko/.docker
   - name: helm
-    image: alpine/helm:3.13
+    image: alpine/helm:3.13.0
     command: ["/bin/sh"]
     tty: true
   volumes:
