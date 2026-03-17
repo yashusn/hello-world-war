@@ -9,18 +9,22 @@ pipeline {
 
     stages {
         stage('Build') {
-            agent {
-                docker {
-					image 'docker:latest'
-            		args '-v /var/run/docker.sock:/var/run/docker.sock'
-                  
-                }
-            }
             steps {
                 // [3] Checkout
                 git branch: 'main', url: 'https://github.com/yashusn/hello-world-war.git'
                 
                 // [4] Build Docker image
+				
+        sh '''
+        /kaniko/executor \
+          --dockerfile=Dockerfile \
+          --context=dir://$WORKSPACE \
+          --destination=yashusn/custom-jenkins:latest \
+          --skip-tls-verify
+        '''
+    }
+}
+				
                 sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER_TAG} ."
                 
                 // [5] Package Helm chart
