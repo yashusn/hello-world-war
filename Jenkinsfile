@@ -107,32 +107,34 @@ pipeline {
     }
 
     stage('Push Helm Chart to JFrog') {
-      steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'jfrog-creds',
-          usernameVariable: 'JFROG_USER',
-          passwordVariable: 'JFROG_PASS'
-        )]) {
-          script {
-            sh """
-              helm package ${HELM_CHART_DIR} \
-                --version ${CHART_VERSION} \
-                --app-version ${IMAGE_TAG} \
-                --destination .
+  steps {
+    withCredentials([usernamePassword(
+      credentialsId: 'jfrog-creds',
+      usernameVariable: 'JFROG_USER',
+      passwordVariable: 'JFROG_PASS'
+    )]) {
+      script {
+        sh '''
+          helm package helm \
+            --version 0.1.''' + env.BUILD_NUMBER + ''' \
+            --app-version ''' + env.BUILD_NUMBER + ''' \
+            --destination .
 
-              echo "${JFROG_PASS}" | helm registry login ${JFROG_URL} \
-                --username "${JFROG_USER}" \
-                --password-stdin
+          ls -la *.tgz
 
-              helm push helloworld-${CHART_VERSION}.tgz \
-                oci://${JFROG_URL}/${JFROG_REPO}
+          echo $JFROG_PASS | helm registry login trials7020p.jfrog.io \
+            --username $JFROG_USER \
+            --password-stdin
 
-              helm registry logout ${JFROG_URL}
-            """
-          }
-        }
+          helm push my-helloworld-0.1.''' + env.BUILD_NUMBER + '''.tgz \
+            oci://trials7020p.jfrog.io/helm-local
+
+          helm registry logout trials7020p.jfrog.io
+        '''
       }
     }
+  }
+}
 
   }
 
