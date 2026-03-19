@@ -25,53 +25,60 @@ pipeline {
 
     // ── Kaniko: Build + Push in one step, no Docker daemon needed ──────
     stage('Build & Push Docker Image via Kaniko') {
-      steps {
-        script {
-          sh """
-            kubectl run kaniko-${BUILD_NUMBER} \
-              --image=gcr.io/kaniko-project/executor:latest \
-              --restart=Never \
-              --namespace=jenkins \
-              --overrides='{
-                "spec": {
-                  "containers": [{
-                    "name": "kaniko",
-                    "image": "gcr.io/kaniko-project/executor:latest",
-                    "args": [
-                      "--context=git://github.com/yashusn/hello-world-war.git#refs/heads/master",
-                      "--destination=yashusn/hello-world-war:${BUILD_NUMBER}",
-                      "--destination=yashusn/hello-world-war:latest",
-                      "--cache=true"
-                    ],
-                    "volumeMounts": [{
-                      "name": "kaniko-secret",
-                      "mountPath": "/kaniko/.docker"
-                    }]
-                  }],
-                  "volumes": [{
+  steps {
+    withCredentials([file(
+      credentialsId: 'kubeconfig',
+      variable: 'KUBECONFIG'
+    )]) {
+      script {
+        sh """
+          kubectl run kaniko-${BUILD_NUMBER} \
+            --image=gcr.io/kaniko-project/executor:latest \
+            --restart=Never \
+            --namespace=jenkins \
+            --overrides='{
+              "spec": {
+                "containers": [{
+                  "name": "kaniko",
+                  "image": "gcr.io/kaniko-project/executor:latest",
+                  "args": [
+                    "--context=git://github.com/yashusn/hello-world-war.git#refs/heads/master",
+                    "--destination=yashusn/hello-world-war:${BUILD_NUMBER}",
+                    "--destination=yashusn/hello-world-war:latest",
+                    "--cache=true"
+                  ],
+                  "volumeMounts": [{
                     "name": "kaniko-secret",
-                    "secret": {
-                      "secretName": "kaniko-secret",
-                      "items": [{
-                        "key": "config.json",
-                        "path": "config.json"
-                      }]
-                    }
-                  }],
-                  "restartPolicy": "Never"
-                }
-              }' \
-              --wait=true \
-              --timeout=10m
+                    "mountPath": "/kaniko/.docker"
+                  }]
+                }],
+                "volumes": [{
+                  "name": "kaniko-secret",
+                  "secret": {
+                    "secretName": "kaniko-secret",
+                    "items": [{"key": "config.json", "path": "config.json"}]
+                  }
+                }],
+                "restartPolicy": "Never"
+              }
+            }' \
+            --timeout=300s
 
-            echo "Kaniko build complete — image pushed to Docker Hub"
+          # Wait for kaniko to finish
+          kubectl wait pod/kaniko-${BUILD_NUMBER} \
+            --for=condition=Ready \
+            --namespace=jenkins \
+            --timeout=300s || true
 
-            # Cleanup kaniko pod
-            kubectl delete pod kaniko-${BUILD_NUMBER} --namespace=jenkins
-          """
-        }
+          kubectl logs -n jenkins kaniko-${BUILD_NUMBER} -f
+
+          # Cleanup
+          kubectl delete pod kaniko-${BUILD_NUMBER} -n jenkins
+        """
       }
     }
+  }
+}
 
     stage('Prepare Helm Chart') {
       steps {
@@ -135,6 +142,6 @@ pipeline {
   post {
     success { echo "Pipeline complete! Build #${BUILD_NUMBER}" }
     failure { echo "Pipeline failed. Check logs." }
-    always  { cleanWs() }
+    always  {  deleteDir() }
   }
 }
