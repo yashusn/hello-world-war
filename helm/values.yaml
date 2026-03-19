@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: yashusn/hello-world-war
-  tag: "latest"   # overridden by pipeline with --set image.tag=$BUILD_NUMBER
+  tag: "latest"
   pullPolicy: Always
 
 service:
@@ -14,16 +14,14 @@ ingress:
   enabled: true
   className: "nginx"
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
   hosts:
-    - host: helloworld.yourdomain.com
+    - host: ""          # empty = match ELB directly, no domain needed
       paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: helloworld-tls
-      hosts:
-        - helloworld.yourdomain.com
+        - path: /helloworld(/|$)(.*)
+          pathType: ImplementationSpecific
+  tls: []               # no TLS needed for ELB testing
 
 resources:
   requests:
