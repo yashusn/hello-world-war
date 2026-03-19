@@ -4,7 +4,29 @@
 // ═══════════════════════════════════════════════════════════════════
 
 pipeline {
-    agent { label 'built-in' }
+    agent {
+    kubernetes {
+      yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: docker
+    image: docker:24-dind
+    securityContext:
+      privileged: true
+    env:
+    - name: DOCKER_TLS_CERTDIR
+      value: ""
+  - name: helm
+    image: alpine/helm:3.14.0
+    command: ['sleep', '99999']
+  - name: jnlp
+    image: jenkins/inbound-agent:latest
+"""
+      defaultContainer 'jnlp'
+    }
+  }
 
     // ── Global environment variables ──────────────────────────────────
   environment {
