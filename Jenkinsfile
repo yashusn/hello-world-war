@@ -26,10 +26,7 @@ pipeline {
     // ── Kaniko: Build + Push in one step, no Docker daemon needed ──────
     stage('Build & Push Docker Image via Kaniko') {
   steps {
-    withCredentials([string(
-  credentialsId: 'kubeconfig',
-  variable: 'KUBECONFIG'
-)]) {
+    withCredentials([file( credentialsId: 'kubeconfig', variable: 'KUBECONFIG' )]) {
       script {
         sh """
           kubectl run kaniko-${BUILD_NUMBER} \
