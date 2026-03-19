@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 // Jenkins Declarative Pipeline
-// Repo: https://github.com/yashusn/my-helloworld-GH-Actions.git
+// Repo: https://github.com/yashusn/hello-world-war.git
 // ═══════════════════════════════════════════════════════════════════
 
 pipeline {
@@ -8,15 +8,15 @@ pipeline {
 
     // ── Global environment variables ──────────────────────────────────
   environment {
-    GIT_REPO         = 'https://github.com/yashusn/my-helloworld-GH-Actions.git'
-    GIT_BRANCH       = 'main'
-    DOCKER_IMAGE     = 'yourdockerhub/my-helloworld'
+    GIT_REPO         = 'https://github.com/yashusn/hello-world-war.git'
+    GIT_BRANCH       = 'master'
+    DOCKER_IMAGE     = 'yashusn/hello-world-war'
     IMAGE_TAG        = "${env.BUILD_NUMBER}"       // unique per build
     HELM_CHART_NAME  = 'my-helloworld'
     HELM_CHART_DIR   = 'helm/my-helloworld'
     HELM_NAMESPACE   = 'default'
     HELM_RELEASE     = 'helloworld-release'
-    JFROG_URL        = 'https://youraccount.jfrog.io/artifactory'
+    JFROG_URL        = 'https://trials7020p.jfrog.io/artifactory'
     JFROG_REPO       = 'helm-local'
     CHART_VERSION    = "0.1.${env.BUILD_NUMBER}"  // versioned per build
   }
@@ -59,7 +59,7 @@ pipeline {
     stage('Push to Docker Hub') {
       steps {
         withCredentials([usernamePassword(
-          credentialsId: 'docker-hub-creds',
+          credentialsId: 'dockerhub-creds',
           usernameVariable: 'DOCKER_USER',
           passwordVariable: 'DOCKER_PASS'
         )]) {
@@ -136,7 +136,7 @@ pipeline {
     stage('Push Helm Chart to JFrog') {
       steps {
         withCredentials([usernamePassword(
-          credentialsId: 'jfrog-creds',
+          credentialsId: 'jfrog_creds',
           usernameVariable: 'JFROG_USER',
           passwordVariable: 'JFROG_PASS'
         )]) {
