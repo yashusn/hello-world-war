@@ -1,0 +1,34 @@
+replicaCount: 2
+
+image:
+  repository: yashusn/hello-world-war
+  tag: "latest"   # overridden by pipeline with --set image.tag=$BUILD_NUMBER
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: helloworld.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: helloworld-tls
+      hosts:
+        - helloworld.yourdomain.com
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
