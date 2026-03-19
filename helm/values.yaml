@@ -17,11 +17,11 @@ ingress:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/use-regex: "true"
   hosts:
-    - host: ""          # empty = match ELB directly, no domain needed
+    - host: ""
       paths:
         - path: /helloworld(/|$)(.*)
           pathType: ImplementationSpecific
-  tls: []               # no TLS needed for ELB testing
+  tls: []
 
 resources:
   requests:
