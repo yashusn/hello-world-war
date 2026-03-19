@@ -98,14 +98,6 @@ pipeline {
           --create-namespace \
           --set image.repository=${DOCKER_IMAGE} \
           --set image.tag=${IMAGE_TAG} \
-          --set ingress.enabled=true \
-          --set ingress.className=nginx \
-          --set "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/rewrite-target=/$2" \
-          --set "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/use-regex=true" \
-          --set "ingress.hosts[0].host=" \
-          --set "ingress.hosts[0].paths[0].path=/helloworld(/|$)(.*)" \
-          --set "ingress.hosts[0].paths[0].pathType=ImplementationSpecific" \
-          --set "ingress.tls=" \
           --wait \
           --timeout 5m
       """
