@@ -8,7 +8,7 @@ pipeline {
     HELM_RELEASE    = 'helloworld-release'
     HELM_NAMESPACE  = 'default'
     CHART_VERSION   = "0.1.${env.BUILD_NUMBER}"
-    JFROG_URL       = 'https://youraccount.jfrog.io'
+    JFROG_URL       = 'https://trials7020p.jfrog.io/'
     JFROG_REPO      = 'helm-local'
   }
 
