@@ -23,59 +23,56 @@ pipeline {
       }
     }
 
-    // ── Kaniko: Build + Push in one step, no Docker daemon needed ──────
     stage('Build & Push Docker Image via Kaniko') {
-  steps {
-    withCredentials([file( credentialsId: 'kubeconfig', variable: 'KUBECONFIG' )]) {
-      script {
-        sh """
-          kubectl run kaniko-${BUILD_NUMBER} \
-            --image=gcr.io/kaniko-project/executor:latest \
-            --restart=Never \
-            --namespace=jenkins \
-            --overrides='{
-              "spec": {
-                "containers": [{
-                  "name": "kaniko",
-                  "image": "gcr.io/kaniko-project/executor:latest",
-                  "args": [
-                    "--context=git://github.com/yashusn/hello-world-war.git#refs/heads/master",
-                    "--destination=yashusn/hello-world-war:${BUILD_NUMBER}",
-                    "--destination=yashusn/hello-world-war:latest",
-                    "--cache=true"
-                  ],
-                  "volumeMounts": [{
-                    "name": "kaniko-secret",
-                    "mountPath": "/kaniko/.docker"
-                  }]
-                }],
-                "volumes": [{
-                  "name": "kaniko-secret",
-                  "secret": {
-                    "secretName": "kaniko-secret",
-                    "items": [{"key": "config.json", "path": "config.json"}]
+      steps {
+        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+          script {
+            sh """
+              kubectl run kaniko-${BUILD_NUMBER} \
+                --image=gcr.io/kaniko-project/executor:latest \
+                --restart=Never \
+                --namespace=jenkins \
+                --overrides='{
+                  "spec": {
+                    "containers": [{
+                      "name": "kaniko",
+                      "image": "gcr.io/kaniko-project/executor:latest",
+                      "args": [
+                        "--context=git://github.com/yashusn/hello-world-war.git#refs/heads/master",
+                        "--destination=yashusn/hello-world-war:${BUILD_NUMBER}",
+                        "--destination=yashusn/hello-world-war:latest",
+                        "--cache=true"
+                      ],
+                      "volumeMounts": [{
+                        "name": "kaniko-secret",
+                        "mountPath": "/kaniko/.docker"
+                      }]
+                    }],
+                    "volumes": [{
+                      "name": "kaniko-secret",
+                      "secret": {
+                        "secretName": "kaniko-secret",
+                        "items": [{"key": "config.json", "path": "config.json"}]
+                      }
+                    }],
+                    "restartPolicy": "Never"
                   }
-                }],
-                "restartPolicy": "Never"
-              }
-            }' \
-            --timeout=300s
+                }' \
+                --timeout=300s
 
-          # Wait for kaniko to finish
-          kubectl wait pod/kaniko-${BUILD_NUMBER} \
-            --for=condition=Ready \
-            --namespace=jenkins \
-            --timeout=300s || true
+              kubectl wait pod/kaniko-${BUILD_NUMBER} \
+                --for=condition=Ready \
+                --namespace=jenkins \
+                --timeout=300s || true
 
-          kubectl logs -n jenkins kaniko-${BUILD_NUMBER} -f
+              kubectl logs -n jenkins kaniko-${BUILD_NUMBER} -f
 
-          # Cleanup
-          kubectl delete pod kaniko-${BUILD_NUMBER} -n jenkins
-        """
+              kubectl delete pod kaniko-${BUILD_NUMBER} -n jenkins
+            """
+          }
+        }
       }
     }
-  }
-}
 
     stage('Prepare Helm Chart') {
       steps {
@@ -90,56 +87,92 @@ pipeline {
     }
 
     stage('Deploy via Helm') {
-  steps {
-    script {
-      sh """
-        helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_DIR} \
-          --namespace ${HELM_NAMESPACE} \
-          --create-namespace \
-          --set image.repository=${DOCKER_IMAGE} \
-          --set image.tag=${IMAGE_TAG} \
-          --wait \
-          --timeout 5m
-      """
-    }
-  }
-}
-
-    stage('Push Helm Chart to JFrog') {
-  steps {
-    withCredentials([usernamePassword(
-      credentialsId: 'jfrog-creds',
-      usernameVariable: 'JFROG_USER',
-      passwordVariable: 'JFROG_PASS'
-    )]) {
-      script {
-        sh '''
-          helm package helm \
-            --version 0.1.''' + env.BUILD_NUMBER + ''' \
-            --app-version ''' + env.BUILD_NUMBER + ''' \
-            --destination .
-
-          ls -la *.tgz
-
-          echo $JFROG_PASS | helm registry login trials7020p.jfrog.io \
-            --username $JFROG_USER \
-            --password-stdin
-
-          helm push my-helloworld-0.1.''' + env.BUILD_NUMBER + '''.tgz \
-            oci://trials7020p.jfrog.io/helm-local
-
-          helm registry logout trials7020p.jfrog.io
-        '''
+      steps {
+        script {
+          sh """
+            helm upgrade --install ${HELM_RELEASE} ${HELM_CHART_DIR} \
+              --namespace ${HELM_NAMESPACE} \
+              --create-namespace \
+              --set image.repository=${DOCKER_IMAGE} \
+              --set image.tag=${IMAGE_TAG} \
+              --wait \
+              --timeout 5m
+          """
+        }
       }
     }
-  }
-}
+
+    stage('Print Access URL') {
+      steps {
+        script {
+          sh """
+            echo "======================================================"
+            echo "   DEPLOYMENT SUCCESSFUL - ACCESS INFORMATION"
+            echo "======================================================"
+
+            ELB=\$(kubectl get svc -n ingress-nginx ingress-nginx-controller \
+              -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+            echo ""
+            echo "  App URL    : http://\${ELB}/helloworld/"
+            echo "  Jenkins URL: http://\${ELB}/"
+            echo "  Image Tag  : ${DOCKER_IMAGE}:${IMAGE_TAG}"
+            echo "  Namespace  : ${HELM_NAMESPACE}"
+            echo "  Release    : ${HELM_RELEASE}"
+            echo ""
+
+            echo "--- Ingress ---"
+            kubectl get ingress -n ${HELM_NAMESPACE}
+
+            echo ""
+            echo "--- Pods ---"
+            kubectl get pods -n ${HELM_NAMESPACE}
+
+            echo ""
+            echo "--- Services ---"
+            kubectl get svc -n ${HELM_NAMESPACE}
+
+            echo "======================================================"
+          """
+        }
+      }
+    }
+
+    stage('Push Helm Chart to JFrog') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'jfrog-creds',
+          usernameVariable: 'JFROG_USER',
+          passwordVariable: 'JFROG_PASS'
+        )]) {
+          script {
+            sh '''
+              helm package helm \
+                --version 0.1.''' + env.BUILD_NUMBER + ''' \
+                --app-version ''' + env.BUILD_NUMBER + ''' \
+                --destination .
+
+              ls -la *.tgz
+
+              echo $JFROG_PASS | helm registry login trials7020p.jfrog.io \
+                --username $JFROG_USER \
+                --password-stdin
+
+              helm push my-helloworld-0.1.''' + env.BUILD_NUMBER + '''.tgz \
+                oci://trials7020p.jfrog.io/helm-local
+
+              helm registry logout trials7020p.jfrog.io
+            '''
+          }
+        }
+      }
+    }
 
   }
 
   post {
     success { echo "Pipeline complete! Build #${BUILD_NUMBER}" }
     failure { echo "Pipeline failed. Check logs." }
-    always  {  deleteDir() }
+    always  { deleteDir() }
   }
 }
