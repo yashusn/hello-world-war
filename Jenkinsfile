@@ -159,7 +159,7 @@ pipeline {
                 --password-stdin
 
               helm push my-helloworld-0.1.''' + env.BUILD_NUMBER + '''.tgz \
-                oci://trials7020p.jfrog.io/helm-local
+                oci://trials7020p.jfrog.io/artifactory/hello-wold-war-helm-local/
 
               helm registry logout trials7020p.jfrog.io
             '''
