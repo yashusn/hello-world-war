@@ -158,7 +158,7 @@ stage('Push Helm Chart to JFrog') {
                 --password-stdin
 
               helm push my-helloworld-0.1.''' + env.BUILD_NUMBER + '''.tgz \
-                oci://trials7020p.jfrog.io/artifactory/helm-local-helmoci-local/
+                oci://trials7020p.jfrog.io/helm-local-helmoci-local
 
               helm registry logout trials7020p.jfrog.io
             '''
