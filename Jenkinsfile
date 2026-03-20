@@ -137,36 +137,43 @@ pipeline {
         }
       }
     }
-
-    stage('Push Helm Chart to JFrog') {
-      steps {
+stage('Push Helm Chart to JFrog') {
+    steps {
         withCredentials([usernamePassword(
-          credentialsId: 'jfrog-creds',
-          usernameVariable: 'JFROG_USER',
-          passwordVariable: 'JFROG_PASS'
+            credentialsId: 'jfrog-creds',
+            usernameVariable: 'JFROG_USER',
+            passwordVariable: 'JFROG_PASS'
         )]) {
-          script {
-            sh '''
-              helm package helm \
-                --version 0.1.''' + env.BUILD_NUMBER + ''' \
-                --app-version ''' + env.BUILD_NUMBER + ''' \
-                --destination .
+            script {
+                sh '''
+                    # 1. Install the Helm Push plugin (if not already installed on the agent)
+                    if ! helm plugin list | grep -q "push"; then
+                        helm plugin install https://github.com/chartmuseum/helm-push
+                    fi
 
-              ls -la *.tgz
+                    # 2. Package the chart
+                    helm package helm \
+                        --version "0.1.${BUILD_NUMBER}" \
+                        --app-version "0.1.${BUILD_NUMBER}" \
+                        --destination .
 
-              echo $JFROG_PASS | helm registry login trials7020p.jfrog.io \
-                --username $JFROG_USER \
-                --password-stdin
+                    # 3. Add the JFrog Helm repository to the local Helm client
+                    helm repo add jfrog-repo https://trials7020p.jfrog.io/artifactory/hello-wold-war-helm-local/ \
+                        --username ${JFROG_USER} \
+                        --password ${JFROG_PASS}
 
-              helm push my-helloworld-0.1.''' + env.BUILD_NUMBER + '''.tgz \
-                oci://trials7020p.jfrog.io/artifactory/hello-wold-war-helm-local/
-
-              helm registry logout trials7020p.jfrog.io
-            '''
-          }
+                    # 4. Push the chart using the 'cm-push' command (provided by the plugin)
+                    # Note: We use the local repo name 'jfrog-repo' defined in the previous step
+                    helm cm-push my-helloworld-0.1.${BUILD_NUMBER}.tgz jfrog-repo
+                    
+                    # 5. Clean up local repo config (optional but good practice)
+                    helm repo remove jfrog-repo
+                '''
+            }
         }
-      }
     }
+}
+    
 
   }
 
