@@ -3,7 +3,7 @@
 <title>Hello</title>
 </head>
 <body>
-	<h1>Hello Devops! , welocome to multistage docker file</h1>
+	<h1>Hello Devops! , welocome to Argo CD</h1>
 	<p>
 		It is now
 		<%= new java.util.Date() %></p>
